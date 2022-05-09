@@ -15,7 +15,7 @@ struct matrix {
 };
 
 int read_matrix_header(struct matrix* m, FILE *file) {
-    if (fscanf(file, "%lux%lu", &(m->cols), &(m->lines)) == EOF) {
+    if (fscanf(file, "%lux%lu", &(m->lines), &(m->cols)) < 2) {
         return ERROR;
     }
 
@@ -29,7 +29,7 @@ int read_matrix_header(struct matrix* m, FILE *file) {
 int read_matrix_body(struct matrix *m, FILE *file) {
     size_t len = m->cols * m-> lines;
 
-    int *values = mmap(NULL, len, PROT_READ, MAP_SHARED | MAP_ANON, 0, 0);
+    int *values = mmap(NULL, len * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, 0, 0);
     if (values == MAP_FAILED) {
         return ERROR;
     }
@@ -37,7 +37,7 @@ int read_matrix_body(struct matrix *m, FILE *file) {
     size_t read = 0;
 
     int curr;
-    while(read < len && fscanf(file, "%d", &curr) != EOF){
+    while(read < len && fscanf(file, "%d", &curr)  == 1) {
         values[read] = curr;
         read++; 
     }
@@ -68,7 +68,7 @@ int read_matrix(struct matrix* m, FILE *file) {
 // }
 
 int main(int argc, char const *argv[]) {
-
+    
     if (argc != 3) {
         fprintf(stderr, "Usage: addmx file1 file2\n");
     }
@@ -89,13 +89,54 @@ int main(int argc, char const *argv[]) {
     }
 
     if (a.lines != b.lines || a.cols != b.cols) {
-        fprintf(stderr, "The matrixes have incompatible structures.");
+        fprintf(stderr, "The matrices have incompatible structures.");
         return EXIT_FAILURE;
     }
 
-    for (size_t i = 0; i < a.cols * a.lines; i++) {
-        printf("%d ", a.values[i]);
+    int *result = mmap(NULL, a.cols * a.lines * sizeof(int), PROT_WRITE, MAP_SHARED | MAP_ANON, 0, 0);
+
+    size_t col;
+    bool is_parent = true;
+    for (col = 0; col < a.cols; col++) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            is_parent = false;
+            break;
+        }
     }
+
+    if (is_parent) {
+        int status;
+        for (size_t i = 0; i < a.cols; i++) {
+            waitpid(-1, &status, 0);
+        }
+
+        printf("%lux%lu\n", a.lines, a.cols);
+
+        for (size_t line = 0; line < a.lines; line++) {
+            for (size_t column = 0; column < a.cols; column++) {
+                if (column > 0) {
+                    putchar(' ');
+                }
+                
+                printf("%d", result[column + line * a.cols]);
+            }
+
+            putchar('\n');
+        }
+
+        return EXIT_SUCCESS;
+    } else {
+        for (size_t line = 0; line < a.lines; line++) {
+            size_t pos = col + line * a.cols;
+            result[pos] = a.values[pos] + b.values[pos];
+        }
+    }
+
+    size_t size = a.cols * a.lines * sizeof(int);
+    munmap(a.values, size);
+    munmap(b.values, size);
+    munmap(result, size);
 
     return EXIT_SUCCESS;
 }

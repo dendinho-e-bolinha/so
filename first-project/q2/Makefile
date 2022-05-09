@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
 OBJS = addmx.c
-CFLAGS = -Wall -Werror -fsanitize=address -fsanitize=undefined
+CFLAGS = -Wall -Werror
 CC = gcc
 INCLUDE =
 LIBS =
