@@ -1,15 +1,15 @@
 SHELL = /bin/sh
 
-OBJS = phrases.c
-CFLAGS = -Wall -Werror
+OBJS = addmx.c
+CFLAGS = -Wall -Werror -fsanitize=address -fsanitize=undefined
 CC = gcc
 INCLUDE =
 LIBS =
 
-phrase:
+addmx:
 	${CC} ${CFLAGS} -o $@ ${OBJS} ${LIBS}
 
 clean: 
-	-rm -f *.o core *.core phrase
+	-rm -f *.o core *.core addmx
 
 .o: ${CC} ${CFLAGS} ${INCLUDES} -c $<

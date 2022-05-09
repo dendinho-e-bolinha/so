@@ -6,10 +6,10 @@ CC = gcc
 INCLUDE =
 LIBS =
 
-phrase:
+cypher:
 	${CC} ${CFLAGS} -o $@ ${OBJS} ${LIBS}
 
 clean: 
-	-rm -f *.o core *.core phrase
+	-rm -f *.o core *.core cypher
 
 .o: ${CC} ${CFLAGS} ${INCLUDES} -c $<
