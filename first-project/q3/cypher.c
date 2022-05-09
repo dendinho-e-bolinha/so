@@ -86,9 +86,96 @@ bool contains(char *set, char el) {
     return false;
 }
 
+char** str_split(char* a_str, const char a_delim) {
+    char** result    = 0;
+    size_t count     = 0;
+    char* tmp        = a_str;
+    char* last_comma = 0;
+    char delim[2];
+    delim[0] = a_delim;
+    delim[1] = 0;
+
+    /* Count how many elements will be extracted. */
+    while (*tmp)
+    {
+        if (a_delim == *tmp)
+        {
+            count++;
+            last_comma = tmp;
+        }
+        tmp++;
+    }
+
+    /* Add space for trailing token. */
+    count += last_comma < (a_str + strlen(a_str) - 1);
+
+    /* Add space for terminating null string so caller
+       knows where the list of returned strings ends. */
+    count++;
+
+    result = malloc(sizeof(char*) * count);
+
+    if (result)
+    {
+        size_t idx  = 0;
+        char* token = strtok(a_str, delim);
+
+        while (token)
+        {
+            assert(idx < count);
+            *(result + idx++) = strdup(token);
+            token = strtok(0, delim);
+        }
+        assert(idx == count - 1);
+        *(result + idx) = 0;
+    }
+
+    return result;
+}
+
+char* cypher(char* text) {
+    FILE * fp;
+    char * line = NULL;
+    size_t len = 0;
+    size_t read;
+    char **tokens;
+    char* cyphered_text;
+
+    fp = fopen("cypher.txt", "r");
+    if (fp == NULL)
+        exit(EXIT_FAILURE);
+
+    strncpy(cyphered_text, text, sizeof(text));
+
+    while ((read = getline(&line, &len, fp)) != -1) {
+        //printf("Retrieved line of length %zu:\n", read);
+        printf("%s\n", line);
+
+        tokens = str_split(line, ' ');
+
+        char *word, *subs;
+
+        if (tokens) {
+            word = *(tokens);
+            subs = *(tokens + 1);
+            cyphered_text = replaceWord(cyphered_text, word, subs);
+            printf("%s | %s \n", word, subs);
+            free(*(tokens)); free(*(tokens + 1));
+            free(tokens);
+        } else {
+            perror("");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    return cyphered_text;
+}
+
+
 int main(int argc, char *argv[]) {
 
     int fd[2];
+    int fd2[2];
     pid_t pid;
 
     if (argc != 2) {
@@ -96,7 +183,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     } 
     
-    if (pipe(fd) < 0) {
+    if (pipe(fd) < 0 || pipe(fd2) < 0) {
         perror("pipe error");
         exit(EXIT_FAILURE);
     }
@@ -107,18 +194,29 @@ int main(int argc, char *argv[]) {
     }
     
     if (pid > 0) {
-        close(fd[READ_END]);
-        dup2(fd[WRITE_END], STDOUT_FILENO); // stdout to pipe
-        close(fd[WRITE_END]);
-        
+        char *file_content = get_file_content(argv[1]);
 
-    } else {
-        close(fd[WRITE_END]);
-        dup2(fd[READ_END], STDIN_FILENO); // stdin from pipe
         close(fd[READ_END]);
-        if (execvp(cmd2[0], cmd2) < 0) {
-            /* exec error */
-        }
+        write(fd[WRITE_END], file_content, sizeof(file_content));
+        close(fd[WRITE_END]);
+
+        close(fd2[WRITE_END]);
+        dup2(fd2[READ_END], STDOUT_FILENO);
+        close(fd2[READ_END]);
+    } else {
+        char file_content[500];
+
+        close(fd[WRITE_END]);
+        read(fd[READ_END], file_content, sizeof(file_content));
+        char* cyphered_text = cypher(file_content);
+        close(fd[READ_END]);
+
+        close(fd2[READ_END]);
+        write(fd2[WRITE_END], cyphered_text, sizeof(cyphered_text));
+        close(fd2[WRITE_END]);
+
+        printf("sadasdas: %s", cyphered_text);
+
     }
 
     return EXIT_SUCCESS;
