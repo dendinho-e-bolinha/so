@@ -1,6 +1,6 @@
 SHELL = /bin/sh
 
-OBJS = cypher.c
+OBJS = test.c
 CFLAGS = -Wall -Werror
 CC = gcc
 INCLUDE =
