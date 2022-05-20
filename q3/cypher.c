@@ -3,16 +3,30 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <argp.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <sys/wait.h>
 
-
+#define DELIMS " \n";
 #define READ_END 0
 #define WRITE_END 1
-#define LINESIZE 256
 
-#define DELIM " "
+typedef struct {
+    char* word;
+    char* cyphered;
+} wordStruct;
+
+long getFileBytes(char* filename) {
+    FILE* file = fopen(filename, "r");
+    if(!file) {
+        perror("Invalid file");
+        exit(EXIT_FAILURE);
+    }
+
+    fseek(file, 0L, SEEK_END);
+
+    return ftell(file);
+}
 
 char* get_file_content(char *file_name) {
     FILE *file;
@@ -42,143 +56,124 @@ char* get_file_content(char *file_name) {
     return text;
 }
 
+size_t numOfLines(char* filename) {
+    FILE *fp;
+    int count = 0;
+    char c;
 
-char* replaceWord(const char *s, const char* oldW, const char* newW) {
-    char* result;
-    int i, cnt = 0;
-    int newWlen = strlen(newW);
-    int oldWlen = strlen(oldW);
+    fp = fopen(filename, "r");
   
-    for (i = 0; s[i] != '\0'; i++) {
-        if (strstr(&s[i], oldW) == &s[i]) {
-            cnt++;
-  
-            // Jumping to index after the old word.
-            i += oldWlen - 1;
-        }
-    }
-  
-    // Making new string of enough length
-    result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1);
-  
-    i = 0;
-    while (*s) {
-        // compare the substring with the result
-        if (strstr(s, oldW) == s) {
-            strcpy(&result[i], newW);
-            i += newWlen;
-            s += oldWlen;
-        }
-        else
-            result[i++] = *s++;
-    }
-  
-    result[i] = '\0';
-    return result;
-}
-
-bool contains(char *set, char el) {
-    size_t i;
-    for (i = 0; i < strlen(set); ++i)
-        if (el == set[i])
-            return true;
-
-    return false;
-}
-
-char** str_split(char* a_str, const char a_delim) {
-    char** result    = 0;
-    size_t count     = 0;
-    char* tmp        = a_str;
-    char* last_comma = 0;
-    char delim[2];
-    delim[0] = a_delim;
-    delim[1] = 0;
-
-    /* Count how many elements will be extracted. */
-    while (*tmp)
-    {
-        if (a_delim == *tmp)
-        {
-            count++;
-            last_comma = tmp;
-        }
-        tmp++;
-    }
-
-    /* Add space for trailing token. */
-    count += last_comma < (a_str + strlen(a_str) - 1);
-
-    /* Add space for terminating null string so caller
-       knows where the list of returned strings ends. */
-    count++;
-
-    result = malloc(sizeof(char*) * count);
-
-    if (result)
-    {
-        size_t idx  = 0;
-        char* token = strtok(a_str, delim);
-
-        while (token)
-        {
-            assert(idx < count);
-            *(result + idx++) = strdup(token);
-            token = strtok(0, delim);
-        }
-        assert(idx == count - 1);
-        *(result + idx) = 0;
-    }
-
-    return result;
-}
-
-char* cypher(char* text) {
-    FILE * fp;
-    char * line = NULL;
-    size_t len = 0;
-    size_t read;
-    char **tokens;
-    char* cyphered_text;
-
-    fp = fopen("cypher.txt", "r");
-    if (fp == NULL)
+    if (fp == NULL) {
+        printf("Could not open file %s", filename);
         exit(EXIT_FAILURE);
-
-    strncpy(cyphered_text, text, sizeof(text));
-
-    while ((read = getline(&line, &len, fp)) != -1) {
-        //printf("Retrieved line of length %zu:\n", read);
-        printf("%s\n", line);
-
-        tokens = str_split(line, ' ');
-
-        char *word, *subs;
-
-        if (tokens) {
-            word = *(tokens);
-            subs = *(tokens + 1);
-            cyphered_text = replaceWord(cyphered_text, word, subs);
-            printf("%s | %s \n", word, subs);
-            free(*(tokens)); free(*(tokens + 1));
-            free(tokens);
-        } else {
-            perror("");
-            exit(EXIT_FAILURE);
-        }
     }
+  
+    for (c = getc(fp); c != EOF; c = getc(fp))
+        if (c == '\n') // if the file doesnt end in a new line, the number of lines isnt correct
+            count++;
+  
+    fclose(fp);
 
-    return cyphered_text;
+    return count;
 }
 
+void readCypher(char * content, wordStruct* wordSet, size_t n) {
+    size_t idx = 0, cnt = n;
+    char delim[] = DELIMS;
 
-int main(int argc, char *argv[]) {
+    wordStruct words;
+    char* token = strtok(content, delim);
 
+    while(token) {
+        if(idx % 2 == 0)
+            words.word = strdup(token);    
+        else
+            words.cyphered = strdup(token);
+
+        idx++;
+
+        if(idx % 2 == 0 && idx > 0) {
+            wordSet[cnt - n] = words;
+            cnt++;
+        }
+
+        token = strtok(0, delim);
+    }
+}
+
+void cypher(char* fileContent, char* result, size_t* bufferSize) {
+    char aux[strlen(fileContent)];
+    strcpy(aux, fileContent);
+
+    size_t numLines = numOfLines("cypher.txt");
+    wordStruct tmp[numLines];
+    
+    int alreadyWritten = 0, found = 1, helper = 0, bytesUsed = 0;
+    size_t incr = 1024;
+
+    readCypher(get_file_content("cypher.txt"), tmp, numLines);
+
+    char* tokens = strtok(aux, " \n");
+
+    while(tokens) {
+        alreadyWritten = 0;
+        found = 1;
+        helper = 0;
+        
+        for(size_t i = 0; i < numLines; ++i) {
+            if(bytesUsed == *bufferSize) {
+                *bufferSize += incr;
+                result = (char*) realloc(result, *bufferSize);
+            }
+                
+            if(strstr(tokens, tmp[i].word)) {
+                strcpy(result, tmp[i].cyphered);
+                result += strlen(tmp[i].cyphered);
+                tokens += strlen(tmp[i].word);
+                strncpy(result, tokens, strlen(tokens));
+                helper = 1;
+                *result = ' ';
+                result++;
+                bytesUsed += strlen(tmp[i].cyphered) + strlen(tokens) + 2;
+
+            } else if (strstr(tokens, tmp[i].cyphered)) {
+                strcpy(result, tmp[i].word);
+                result += strlen(tmp[i].word);
+                tokens += strlen(tmp[i].cyphered);
+                strncpy(result, tokens, strlen(tokens));
+                helper = 1;
+                *result = ' ';
+                result++;
+                bytesUsed += strlen(tmp[i].word) + strlen(tokens) + 2;
+
+            }
+            if(i == numLines - 1 && !helper)
+                found = 0;
+
+            if (!alreadyWritten && !found) {
+                strncpy(result, tokens, strlen(tokens));
+                result += strlen(tokens);
+                alreadyWritten = 1;
+                *result = ' ';
+                result++;
+                helper = 0;
+                bytesUsed += strlen(tokens) + 2;
+            }
+        }
+        tokens = strtok(0, " \n");
+    }
+    *result = '\0';
+}
+
+int main(int argc, char* argv[]) {
     int fd[2];
     int fd2[2];
     pid_t pid;
 
-    if (argc != 2) {
+    char* text = get_file_content("test.txt");
+    long numBytes = getFileBytes("test.txt");
+
+    if (argc != 2 && false) {
         printf("Wrong number of arguments passed: %d\n", argc - 1);
         exit(EXIT_FAILURE);
     } 
@@ -192,32 +187,38 @@ int main(int argc, char *argv[]) {
         perror("fork error");
         exit(EXIT_FAILURE);
     }
+
     
-    if (pid > 0) {
-        char *file_content = get_file_content(argv[1]);
-
+    if (pid > 0) { // parent
         close(fd[READ_END]);
-        write(fd[WRITE_END], file_content, sizeof(file_content));
+        write(fd[WRITE_END], text, numBytes);
         close(fd[WRITE_END]);
 
         close(fd2[WRITE_END]);
-        dup2(fd2[READ_END], STDOUT_FILENO);
-        close(fd2[READ_END]);
-    } else {
-        char file_content[500];
 
+        char buffer[1024];
+        while(read(fd2[READ_END], buffer, 1024) > 0) {
+            printf("%s", buffer);
+        }
+
+        waitpid(pid, NULL, 0);
+        close(fd2[READ_END]);
+
+    } else { // child
+        size_t bufferSize = 1024;
+        char* result = (char*) calloc(bufferSize, sizeof(char));
+        
         close(fd[WRITE_END]);
-        read(fd[READ_END], file_content, sizeof(file_content));
-        char* cyphered_text = cypher(file_content);
+        read(fd[READ_END], text, numBytes);
+        cypher(text, result, &bufferSize);
         close(fd[READ_END]);
 
         close(fd2[READ_END]);
-        write(fd2[WRITE_END], cyphered_text, sizeof(cyphered_text));
+        write(fd2[WRITE_END], result, bufferSize);
         close(fd2[WRITE_END]);
 
-        printf("sadasdas: %s", cyphered_text);
-
+        free(result);
     }
-
+    
     return EXIT_SUCCESS;
 }

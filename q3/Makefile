@@ -1,12 +1,12 @@
 SHELL = /bin/sh
 
-OBJS = test.c
+OBJS = cypher.c
 CFLAGS = -Wall -Werror
 CC = gcc
 INCLUDE =
 LIBS =
 
-cypher:
+cypher: cypher.c
 	${CC} ${CFLAGS} -o $@ ${OBJS} ${LIBS}
 
 clean: 
