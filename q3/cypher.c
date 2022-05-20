@@ -162,7 +162,7 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
         }
         tokens = strtok(0, " \n");
     }
-    *result = '\0';
+    *(--result) = '\0';
 }
 
 int main(int argc, char* argv[]) {
@@ -202,6 +202,7 @@ int main(int argc, char* argv[]) {
         }
 
         waitpid(pid, NULL, 0);
+
         close(fd2[READ_END]);
 
     } else { // child
