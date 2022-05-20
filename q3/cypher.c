@@ -170,10 +170,10 @@ int main(int argc, char* argv[]) {
     int fd2[2];
     pid_t pid;
 
-    char* text = get_file_content("test.txt");
-    long numBytes = getFileBytes("test.txt");
+    char text[1024];
+    long numBytes = 1024;
 
-    if (argc != 2 && false) {
+    if (argc != 1) {
         printf("Wrong number of arguments passed: %d\n", argc - 1);
         exit(EXIT_FAILURE);
     } 
@@ -191,9 +191,13 @@ int main(int argc, char* argv[]) {
     
     if (pid > 0) { // parent
         close(fd[READ_END]);
-        write(fd[WRITE_END], text, numBytes);
+        
+        while(read(STDIN_FILENO, text, 1024) > 0) {
+            write(fd[WRITE_END], text, numBytes);
+            numBytes += 1024;
+        }
+        
         close(fd[WRITE_END]);
-
         close(fd2[WRITE_END]);
 
         char buffer[1024];
