@@ -111,7 +111,9 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
     int alreadyWritten = 0, found = 1, helper = 0, bytesUsed = 0;
     size_t incr = 1024;
 
-    readCypher(get_file_content("cypher.txt"), tmp, numLines);
+    char* cypherFile = get_file_content("cypher.txt");
+
+    readCypher(cypherFile, tmp, numLines);
 
     char* tokens = strtok(aux, " \n");
 
@@ -163,6 +165,12 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
         tokens = strtok(0, " \n");
     }
     *(--result) = '\0';
+
+    for(int i = 0; i < numLines; ++i) {
+        free(tmp[i].word);
+        free(tmp[i].cyphered);
+    }
+    free(cypherFile);
 }
 
 int main(int argc, char* argv[]) {
@@ -170,7 +178,7 @@ int main(int argc, char* argv[]) {
     int fd2[2];
     pid_t pid;
 
-    char text[1024];
+    char text[1024] = {0};
     long numBytes = 1024;
 
     if (argc != 1) {
