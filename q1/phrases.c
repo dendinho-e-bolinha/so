@@ -14,7 +14,6 @@
 char* get_file_content(char *file_name) {
     FILE *file;
     char *text;
-    long numbytes;
 
     file = fopen(file_name, "r");
 
@@ -24,12 +23,12 @@ char* get_file_content(char *file_name) {
     }
 
     fseek(file, 0L, SEEK_END);
-    numbytes = ftell(file);
+    long numbytes = ftell(file);
     fseek(file, 0L, SEEK_SET);
 
-    text = (char*)calloc(numbytes, sizeof(char));
+    text = (char*)calloc((size_t)numbytes, sizeof(char));
 
-    fread(text, sizeof(char), numbytes, file);
+    fread(text, sizeof(char), (size_t)numbytes, file);
 
     fclose(file);
 
@@ -39,7 +38,7 @@ char* get_file_content(char *file_name) {
     return text;
 }
 
-bool contains(char *set, char el) {
+bool contains(const char *set, const char el) {
     size_t i;
     for (i = 0; i < strlen(set); ++i)
         if (el == set[i])
@@ -48,8 +47,8 @@ bool contains(char *set, char el) {
     return false;
 }
 
-int count_seps(char *text) {
-    int count = 0;
+size_t count_seps(const char *text) {
+    size_t count = 0;
     size_t i;
 
     for (i = 0; i < strlen(text); ++i)
@@ -85,14 +84,14 @@ int main(int argc, char *argv[]) {
     file = (mode == LIST_MODE) ? file : argv[1];
 
     char *text = get_file_content(file);
-    int num_seps = count_seps(text);
+    size_t num_seps = count_seps(text);
 
     const char **phrases = malloc((num_seps + 1) * sizeof(*phrases));
     char *sep = malloc((num_seps + 1) * sizeof(char));
-    int len = strlen(text);
+    size_t len = strlen(text);
 
-    int count = 0;
-    for (int i = 0; i < len; ++i) {
+    size_t count = 0, i;
+    for (i = 0; i < len; ++i) {
         if (contains(DELIMS, text[i])) {
             if (contains(DELIMS, text[i + 1]))
                 continue;
@@ -107,7 +106,8 @@ int main(int argc, char *argv[]) {
 
     int curr_sep = 0;
 
-    for (int j = 0; j < len; j++) {
+    size_t j;
+    for (j = 0; j < len; ++j) {
         if (text[j] == '\0') {
             curr_sep++;
             char *aux = text + j + 1;
@@ -117,13 +117,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    int k;
-    for (k = 0; k < count + 1; k++)
+    size_t k;
+    for (k = 0; k < count + 1; ++k)
         if (mode == LIST_MODE)
-            printf("[%d] %s%c\n",k + 1, phrases[k], sep[k]);
+            printf("[%ld] %s%c\n",k + 1, phrases[k], sep[k]);
 
     if (mode == NORMAL_MODE)
-        printf("%d\n", k++);
+        printf("%ld\n", k++);
 
     free(sep);
     free(phrases);

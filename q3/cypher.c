@@ -28,10 +28,9 @@ long getFileBytes(char* filename) {
     return ftell(file);
 }
 
-char* get_file_content(char *file_name) {
+char* get_file_content(const char *file_name) {
     FILE *file;
     char *text;
-    long numbytes;
 
     file = fopen(file_name, "r");
 
@@ -41,12 +40,12 @@ char* get_file_content(char *file_name) {
     }
 
     fseek(file, 0L, SEEK_END);
-    numbytes = ftell(file);
+    long numbytes = ftell(file);
     fseek(file, 0L, SEEK_SET);
 
-    text = (char*)calloc(numbytes, sizeof(char));
+    text = (char*)calloc((size_t)numbytes, sizeof(char));
 
-    fread(text, sizeof(char), numbytes, file);
+    fread(text, sizeof(char), (size_t)numbytes, file);
 
     fclose(file);
 
@@ -56,9 +55,9 @@ char* get_file_content(char *file_name) {
     return text;
 }
 
-size_t numOfLines(char* filename) {
+size_t numOfLines(const char* filename) {
     FILE *fp;
-    int count = 0;
+    size_t count = 0;
     char c;
 
     fp = fopen(filename, "r");
@@ -68,10 +67,11 @@ size_t numOfLines(char* filename) {
         exit(EXIT_FAILURE);
     }
   
-    for (c = getc(fp); c != EOF; c = getc(fp))
-        if (c == '\n') // if the file doesnt end in a new line, the number of lines isnt correct
+    while ((c = (char)getc(fp)) != EOF) {
+        if (c == '\n')
             count++;
-  
+    }
+    
     fclose(fp);
 
     return count;
@@ -108,7 +108,8 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
     size_t numLines = numOfLines("cypher.txt");
     wordStruct tmp[numLines];
     
-    int alreadyWritten = 0, found = 1, helper = 0, bytesUsed = 0;
+    int alreadyWritten = 0, found = 1, helper = 0;
+    size_t bytesUsed = 0;
     size_t incr = 1024;
 
     char* cypherFile = get_file_content("cypher.txt");
@@ -149,6 +150,7 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
                 bytesUsed += strlen(tmp[i].word) + strlen(tokens) + 2;
 
             }
+            
             if(i == numLines - 1 && !helper)
                 found = 0;
 
@@ -166,7 +168,8 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
     }
     *(--result) = '\0';
 
-    for(int i = 0; i < numLines; ++i) {
+    size_t i;
+    for(i = 0; i < numLines; ++i) {
         free(tmp[i].word);
         free(tmp[i].cyphered);
     }
@@ -179,7 +182,7 @@ int main(int argc, char* argv[]) {
     pid_t pid;
 
     char text[1024] = {0};
-    long numBytes = 1024;
+    size_t numBytes = 1024;
 
     if (argc != 1) {
         printf("Wrong number of arguments passed: %d\n", argc - 1);
