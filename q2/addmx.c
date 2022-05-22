@@ -75,8 +75,12 @@ int main(int argc, char const *argv[]) {
     
     FILE *afile = fopen(argv[1], "r");
     FILE *bfile = fopen(argv[2], "r"); 
+        
+        
 
     if (afile == NULL || bfile == NULL) {
+        fclose(afile);
+        fclose(bfile);
         fprintf(stderr, "File not found");
         return EXIT_FAILURE;
     }
@@ -85,8 +89,13 @@ int main(int argc, char const *argv[]) {
     struct matrix b;
     
     if (read_matrix(&a, afile) == ERROR || read_matrix(&b, bfile) == ERROR) {
+        fclose(afile);
+        fclose(bfile);
         return EXIT_FAILURE;
     }
+
+    fclose(afile);
+    fclose(bfile);
 
     if (a.lines != b.lines || a.cols != b.cols) {
         fprintf(stderr, "The matrices have incompatible structures.");
