@@ -6,7 +6,7 @@ CC = gcc
 INCLUDE =
 LIBS =
 
-phrase:
+phrases: phrases.c
 	${CC} ${CFLAGS} -o $@ ${OBJS} ${LIBS}
 
 clean: 
