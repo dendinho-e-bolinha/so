@@ -101,6 +101,22 @@ void readCypher(char * content, wordStruct* wordSet, size_t n) {
     }
 }
 
+size_t replaceWord(char* tokens, char* oldWord, char* newWord, char* result) {
+    size_t bytesToMove = 0;
+
+    while(strstr(tokens, oldWord)) {
+        strcpy(result, newWord);
+        result += strlen(newWord);
+        tokens += strlen(oldWord);
+        bytesToMove += strlen(newWord);
+    }
+    strncpy(result, tokens, strlen(tokens));
+    result += strlen(tokens);
+    bytesToMove += strlen(tokens);
+
+    return bytesToMove; 
+}
+
 void cypher(char* fileContent, char* result, size_t* bufferSize) {
     char aux[strlen(fileContent)];
     strcpy(aux, fileContent);
@@ -109,7 +125,7 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
     wordStruct tmp[numLines];
     
     int alreadyWritten = 0, found = 1, helper = 0;
-    size_t bytesUsed = 0;
+    size_t bytesUsed = 0, bytesToMove = 0;
     size_t incr = 1024;
 
     char* cypherFile = get_file_content("cypher.txt");
@@ -128,28 +144,24 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
                 *bufferSize += incr;
                 result = (char*) realloc(result, *bufferSize);
             }
-                
+            
             if(strstr(tokens, tmp[i].word)) {
-                strcpy(result, tmp[i].cyphered);
-                result += strlen(tmp[i].cyphered);
-                tokens += strlen(tmp[i].word);
-                strncpy(result, tokens, strlen(tokens));
+                bytesToMove = replaceWord(tokens, tmp[i].word, tmp[i].cyphered, result);
+                alreadyWritten = 1;
                 helper = 1;
+                result += bytesToMove;
                 *result = ' ';
                 result++;
-                bytesUsed += strlen(tmp[i].cyphered) + strlen(tokens) + 2;
-
+                bytesUsed += bytesToMove + 1;
             } else if (strstr(tokens, tmp[i].cyphered)) {
-                strcpy(result, tmp[i].word);
-                result += strlen(tmp[i].word);
-                tokens += strlen(tmp[i].cyphered);
-                strncpy(result, tokens, strlen(tokens));
+                bytesToMove = replaceWord(tokens, tmp[i].cyphered, tmp[i].word, result);
+                alreadyWritten = 1;
                 helper = 1;
+                result += bytesToMove;
                 *result = ' ';
                 result++;
-                bytesUsed += strlen(tmp[i].word) + strlen(tokens) + 2;
-
-            }
+                bytesUsed += bytesToMove + 1;
+            }                
             
             if(i == numLines - 1 && !helper)
                 found = 0;
@@ -161,7 +173,7 @@ void cypher(char* fileContent, char* result, size_t* bufferSize) {
                 *result = ' ';
                 result++;
                 helper = 0;
-                bytesUsed += strlen(tokens) + 2;
+                bytesUsed += strlen(tokens) + 1;
             }
         }
         tokens = strtok(0, " \n");
