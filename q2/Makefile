@@ -6,7 +6,7 @@ CC = gcc
 INCLUDE =
 LIBS =
 
-addmx:
+addmx: addmx.c
 	${CC} ${CFLAGS} -o $@ ${OBJS} ${LIBS}
 
 clean: 
