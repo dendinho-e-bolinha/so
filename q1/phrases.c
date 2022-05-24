@@ -32,7 +32,6 @@ long get_file_bytes(FILE* file) {
 char* get_file_content(char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        fclose(file);
         return NULL;
     }
 
@@ -56,8 +55,7 @@ char* get_file_content(char *filename) {
 }
 
 bool contains(const char *set, const char el) {
-    size_t i;
-    for (i = 0; i < strlen(set); ++i)
+    for (size_t i = 0; i < strlen(set); ++i)
         if (el == set[i])
             return true;
 
@@ -66,9 +64,7 @@ bool contains(const char *set, const char el) {
 
 size_t count_seps(const char *text) {
     size_t count = 0;
-    size_t i;
-
-    for (i = 0; i < strlen(text); ++i)
+    for (size_t i = 0; i < strlen(text); ++i)
         if (contains(DELIMS, text[i]))
             count++;
 
@@ -101,30 +97,49 @@ int main(int argc, char *argv[]) {
     file = (mode == LIST_MODE) ? file : argv[1];
 
     char *text = get_file_content(file);
+    if (text == NULL) {
+        return EXIT_FAILURE;
+    }
+
     size_t num_seps = count_seps(text);
+    size_t num_phrases = num_seps + 1;
 
-    const char **phrases = malloc((num_seps + 1) * sizeof(*phrases));
-    char *sep = malloc((num_seps + 1) * sizeof(char));
+    char *sep = malloc(num_phrases * sizeof(char));
+    if (sep == NULL) {
+        free(text);
+        return EXIT_FAILURE;
+    }
+
+    memset(sep, 0, num_phrases);
+
     size_t len = strlen(text);
+    size_t count = 0;
 
-    size_t count = 0, i;
-    for (i = 0; i < len; ++i) {
+    for (size_t i = 0; i < len; ++i) {
         if (contains(DELIMS, text[i])) {
             if (contains(DELIMS, text[i + 1]))
                 continue;
 
             sep[count] = text[i];
             count++;
+
             text[i] = '\0';
         }       
     }
 
+    const char **phrases = malloc(num_phrases * sizeof(*phrases));
+    if (phrases == NULL) {
+        free(text);
+        free(sep);
+        return EXIT_FAILURE;
+    }
+
+    memset(phrases, 0, num_phrases * sizeof(char*));
+
     phrases[0] = text;
 
-    int curr_sep = 0;
-
-    size_t j;
-    for (j = 0; j < len; ++j) {
+    size_t curr_sep = 0;
+    for (size_t j = 0; j < len; ++j) {
         if (text[j] == '\0') {
             curr_sep++;
             char *aux = text + j + 1;
@@ -135,12 +150,12 @@ int main(int argc, char *argv[]) {
     }
 
     size_t k;
-    for (k = 0; k < count + 1; ++k)
+    for (k = 0; k < num_phrases && phrases[k] != NULL; ++k)
         if (mode == LIST_MODE)
-            printf("[%ld] %s%c\n",k + 1, phrases[k], sep[k]);
+            printf("[%lu] %s%c\n", (unsigned long) k + 1, phrases[k], sep[k]);
 
     if (mode == NORMAL_MODE)
-        printf("%ld\n", k++);
+        printf("%lu\n", (unsigned long) k);
 
     free(sep);
     free(phrases);
