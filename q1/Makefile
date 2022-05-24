@@ -10,6 +10,6 @@ phrases: phrases.c
 	${CC} ${CFLAGS} -o $@ ${OBJS} ${LIBS}
 
 clean: 
-	-rm -f *.o core *.core phrase
+	-rm -f *.o core *.core phrases
 
 .o: ${CC} ${CFLAGS} ${INCLUDES} -c $<

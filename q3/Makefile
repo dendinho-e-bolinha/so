@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
 OBJS = cypher.c
-CFLAGS = -Wall -Werror -pedantic -fsanitize=address -fsanitize=undefined -g
+CFLAGS = -Wall -Werror
 CC = gcc
 INCLUDE =
 LIBS =
