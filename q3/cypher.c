@@ -218,77 +218,82 @@ char* cypher(char* file_content) {
 }
 
 int main(int argc, char* argv[]) {
+    int input[2], output[2];
+    if (pipe(input) < 0 || pipe(output) < 0) {
+        perror("pipe error");
+        exit(EXIT_FAILURE);
+    }
 
-    FILE *file = fopen("quote1.txt", "r");
-    char *content = get_file_content(file);
+    pid_t pid;
+    if ((pid = fork()) < 0) {
+        perror("fork error");
+        exit(EXIT_FAILURE);
+    }
 
-    char *result = cypher(content);
+    if (pid > 0) { // parent
+        close(input[READ_END]);
 
-    printf("%s", content);
+        char buffer[BUFFER_SIZE];
 
-    free(result);
-    free(content);
-    fclose(file);
-
-
-    // int fd[2];
-    // int fd2[2];
-    // pid_t pid;
-
-    // char text[1024] = {0};
-    // size_t numBytes = 1024;
-
-    // if (argc != 1) {
-    //     printf("Wrong number of arguments passed: %d\n", argc - 1);
-    //     exit(EXIT_FAILURE);
-    // } 
-    
-    // if (pipe(fd) < 0 || pipe(fd2) < 0) {
-    //     perror("pipe error");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // if ((pid = fork()) < 0) {
-    //     perror("fork error");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    
-    // if (pid > 0) { // parent
-    //     close(fd[READ_END]);
+        int numbytes;
+        while((numbytes = read(STDIN_FILENO, buffer, BUFFER_SIZE)) > 0) {
+            write(input[WRITE_END], buffer, numbytes);
+        }
         
-    //     while(read(STDIN_FILENO, text, 1024) > 0) {
-    //         write(fd[WRITE_END], text, numBytes);
-    //         numBytes += 1024;
-    //     }
+        close(input[WRITE_END]);
+        close(output[WRITE_END]);
+
+        int wstatus;
+        waitpid(pid, &wstatus, 0);
+
+        if (WIFEXITED(wstatus)) {
+            while((numbytes = read(output[READ_END], buffer, BUFFER_SIZE)) > 0) {
+                write(STDOUT_FILENO, buffer, numbytes);
+            }
+
+            close(output[READ_END]);
+        } else {
+            close(output[READ_END]);
+
+            printf("An error occured while cyphering the text...\n");
+            return EXIT_FAILURE;
+        }
+
+    } else { // child
+        close(input[WRITE_END]);
+
+        char *text = (char*) calloc(BUFFER_SIZE, sizeof(char));
+        if (text == NULL) {
+            return EXIT_FAILURE;
+        }
+
+        size_t len = 0, capacity = BUFFER_SIZE;
+
+        int numbytes;
+        while ((numbytes = read(input[READ_END], text + len, BUFFER_SIZE)) > 0) {
+            len += numbytes;
+
+            text = ensure_buffer_capacity(text, &capacity, len + BUFFER_SIZE);
+            if (text == NULL) {
+                return EXIT_FAILURE;
+            }
+        }
         
-    //     close(fd[WRITE_END]);
-    //     close(fd2[WRITE_END]);
-
-    //     char buffer[1024];
-    //     while(read(fd2[READ_END], buffer, 1024) > 0) {
-    //         printf("%s", buffer);
-    //     }
-
-    //     waitpid(pid, NULL, 0);
-
-    //     close(fd2[READ_END]);
-
-    // } else { // child
-    //     size_t bufferSize = 1024;
-    //     char* result = (char*) calloc(bufferSize, sizeof(char));
+        close(input[READ_END]);
         
-    //     close(fd[WRITE_END]);
-    //     read(fd[READ_END], text, numBytes);
-    //     cypher(text, result, &bufferSize);
-    //     close(fd[READ_END]);
+        char *result = cypher(text);
+        free(text);
+        
+        if (result == NULL) {
+            return EXIT_FAILURE;
+        }
 
-    //     close(fd2[READ_END]);
-    //     write(fd2[WRITE_END], result, bufferSize);
-    //     close(fd2[WRITE_END]);
+        close(output[READ_END]);
+        write(output[WRITE_END], result, strlen(result) + 1);
+        close(output[WRITE_END]);
 
-    //     free(result);
-    // }
+        free(result);
+    }
     
-    // return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }

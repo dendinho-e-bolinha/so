@@ -11,30 +11,47 @@
 
 #define DELIMS ".!?"
 
-char* get_file_content(char *file_name) {
-    FILE *file;
-    char *text;
-
-    file = fopen(file_name, "r");
-
+long get_file_bytes(FILE* file) {
     if (!file) {
-        perror("Invalid file");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
-    fseek(file, 0L, SEEK_END);
-    long numbytes = ftell(file);
-    fseek(file, 0L, SEEK_SET);
+    long curr = ftell(file);
+    if (fseek(file, 0L, SEEK_END) < 0) {
+        return -1;
+    }
+    
+    long size = ftell(file);
+    if (fseek(file, curr, SEEK_SET) < 0) {
+        return -1;
+    }
 
-    text = (char*)calloc((size_t)numbytes, sizeof(char));
+    return size;
+}
 
-    fread(text, sizeof(char), (size_t)numbytes, file);
-
-    fclose(file);
-
-    if (!text)
+char* get_file_content(char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        fclose(file);
         return NULL;
+    }
 
+    long numbytes = get_file_bytes(file);
+    if (numbytes < 0) {
+        fclose(file);
+        return NULL;
+    }
+
+    char *text = (char*) calloc((size_t) numbytes + 1, sizeof(char));
+    if (text == NULL) {
+        fclose(file);
+        return NULL;    
+    }
+
+    fread(text, sizeof(char), (size_t) numbytes, file);
+    text[numbytes] = '\0';
+    
+    fclose(file);
     return text;
 }
 
