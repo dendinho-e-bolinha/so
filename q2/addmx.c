@@ -79,9 +79,16 @@ int main(int argc, char const *argv[]) {
         
 
     if (afile == NULL || bfile == NULL) {
-        fclose(afile);
-        fclose(bfile);
         fprintf(stderr, "File not found");
+
+        if (afile != NULL) {
+            fclose(afile);
+        }
+
+        if (bfile != NULL) {
+            fclose(bfile);
+        }
+        
         return EXIT_FAILURE;
     }
 
