@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
 OBJS = addmx.c
-CFLAGS = -Wall -Werror
+CFLAGS = -Wall -Werror -g
 CC = gcc
 INCLUDE =
 LIBS =

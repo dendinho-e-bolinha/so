@@ -63,9 +63,6 @@ int read_matrix(struct matrix* m, FILE *file) {
     return OK;
 }
 
-// int add_matrix(struct matrix* ma, struct matri* mb) {
-//     if (read_matrix_header())
-// }
 
 int main(int argc, char const *argv[]) {
     
@@ -76,15 +73,8 @@ int main(int argc, char const *argv[]) {
     FILE *afile = fopen(argv[1], "r");
     FILE *bfile = fopen(argv[2], "r"); 
         
-        
-
-    if (afile == NULL || bfile == NULL) {
-        fprintf(stderr, "File not found");
-
-        if (afile != NULL) {
-            fclose(afile);
-        }
-
+    if (afile == NULL) {
+        perror(argv[1]);
         if (bfile != NULL) {
             fclose(bfile);
         }
@@ -92,12 +82,25 @@ int main(int argc, char const *argv[]) {
         return EXIT_FAILURE;
     }
 
+    if (bfile == NULL) {
+        perror(argv[2]);
+        fclose(afile);
+
+        return EXIT_FAILURE;
+    }
+
     struct matrix a;
     struct matrix b;
     
-    if (read_matrix(&a, afile) == ERROR || read_matrix(&b, bfile) == ERROR) {
-        fclose(afile);
-        fclose(bfile);
+    if (read_matrix(&a, afile) == ERROR) {
+        fprintf(stderr, "Could not read matrix %s\n", argv[1]);
+        fclose(afile); fclose(bfile);
+        return EXIT_FAILURE;
+    }
+    
+    if (read_matrix(&b, bfile) == ERROR) {
+        fprintf(stderr, "Could not read matrix %s\n", argv[2]);
+        fclose(afile); fclose(bfile);
         return EXIT_FAILURE;
     }
 
@@ -105,7 +108,7 @@ int main(int argc, char const *argv[]) {
     fclose(bfile);
 
     if (a.lines != b.lines || a.cols != b.cols) {
-        fprintf(stderr, "The matrices have incompatible structures.");
+        fprintf(stderr, "The matrices have incompatible structures.\n");
         return EXIT_FAILURE;
     }
 
@@ -118,12 +121,15 @@ int main(int argc, char const *argv[]) {
         if (pid == 0) {
             is_parent = false;
             break;
+        } else if (pid < 0) {
+            perror("fork");
+            break;
         }
     }
 
     if (is_parent) {
         int status;
-        for (size_t i = 0; i < a.cols; i++) {
+        for (size_t i = 0; i < col; i++) {
             waitpid(-1, &status, 0);
         }
 
